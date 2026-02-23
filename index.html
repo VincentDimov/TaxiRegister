@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bilregister</title>
+<style>
+body { font-family: Arial; background: #f4f4f4; padding: 20px; }
+.container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
+input, button { padding: 8px; margin: 5px; }
+button { background: #007bff; color: white; border: none; cursor: pointer; }
+button:hover { background: #0056b3; }
+.delete-btn { background: red; color:white; }
+.editable-input { width: 100%; box-sizing: border-box; }
+.message { margin: 5px 0; color: green; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+@media (max-width:768px) {
+  table, thead, tbody, th, td, tr { display: block; }
+  tr { margin-bottom: 15px; }
+  td { text-align: right; padding-left: 50%; position: relative; }
+  td::before { content: attr(data-label); position: absolute; left: 10px; width: 45%; text-align: left; font-weight: bold; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<!-- LOGIN -->
+<div id="loginDiv">
+  <h2>Inloggning</h2>
+  <input id="username" placeholder="username">
+  <input id="password" type="password" placeholder="password">
+  <button onclick="login()">Logga in</button>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
+  <h2>Bilregister</h2>
+  
+  <!-- Rad 1: Sök -->
+  <div>
+      <label>Sök bil:</label>
+      <input id="search" placeholder="Sök bil..." onkeyup="searchCar()">
+    </div>
+    
+  <table id="table"></table>
+  
+  <!-- Rad 2: Lägg till bil -->
+  <div>
+      <input id="newCarName" placeholder="Ange bilnamn">
+      <button onclick="addCar()">Lägg till bil</button>
+      <span id="addMessage" class="message"></span>
+      
+      
+      <!-- Rad 3: Redigera -->
+      <button onclick="toggleEdit()">Redigera</button>
+      <span id="saveMessage" class="message"></span>
+    </div>
+    
+    <div>
+      <button onclick="logout()">Logga ut</button>
+  </div>
+
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycby-lVviwPlE6e5pVVBN9JokL18610tPIrV3Uo3xC7zoTsdqX7KspzEL3Zcz8iFBajjbhw/exec";
+let data = [];
+let editMode = false;
+
+const dateColumns = [1,2,3,4]; // 0-based index
+const textColumns = [0,5];
+
+document.addEventListener("DOMContentLoaded", () => {
+  if(localStorage.getItem("loggedIn") === "true") {
+    showApp();
+    loadData();
+  }
+});
+
+function showApp(){
+  document.getElementById("loginDiv").style.display="none";
+  document.getElementById("app").style.display="block";
+}
+
+function showLogin(){
+  document.getElementById("loginDiv").style.display="block";
+  document.getElementById("app").style.display="none";
+}
+
+// Konvertera datum från ISO-format till YYYY-MM-DD
+function formatDate(value){
+  if(!value) return "";
+  let d = new Date(value);
+  if(isNaN(d.getTime())) return ""; // Hantera tomma eller ogiltiga datum
+  // Justera för tidszon
+  const offset = d.getTimezoneOffset();
+  d.setMinutes(d.getMinutes() - offset);
+  return d.toISOString().split("T")[0];
+}
+
+async function login() {
+  const res = await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"login",
+      username:username.value,
+      password:password.value
+    })
+  });
+
+  const result = await res.json();
+  if(result.success){
+    localStorage.setItem("loggedIn","true");
+    showApp();
+    loadData();
+  } else {
+    alert("Fel användarnamn eller lösenord");
+  }
+}
+
+function logout(){
+  localStorage.removeItem("loggedIn");
+  location.reload();
+}
+
+async function loadData(){
+  const res = await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({action:"getData"})
+  });
+
+  data = await res.json();
+
+  if(Array.isArray(data) && data.length > 0){
+    renderTable(data);
+  }
+}
+
+function renderTable(rows){
+  const table = document.getElementById("table");
+  table.innerHTML="";
+
+  if(!rows || rows.length === 0) return;
+
+  const headerRow = document.createElement("tr");
+  rows[0].forEach(h=>{
+    const th = document.createElement("th");
+    th.innerText = h;
+    headerRow.appendChild(th);
+  });
+
+  if(editMode){
+    const th = document.createElement("th");
+    th.innerText="Åtgärd";
+    headerRow.appendChild(th);
+  }
+
+  table.appendChild(headerRow);
+
+  rows.slice(1).forEach((row,i)=>{
+    const tr = document.createElement("tr");
+
+    row.forEach((cell,j)=>{
+      const td = document.createElement("td");
+      td.dataset.label = rows[0][j];
+
+      let cellValue = cell || "";
+      
+      if(editMode){
+        const input = document.createElement("input");
+        input.className="editable-input";
+
+        if(dateColumns.includes(j)){
+          input.type="date";
+          input.value = formatDate(cellValue);
+        } else {
+          input.type="text";
+          input.value = cellValue;
+        }
+
+        td.appendChild(input);
+
+      } else {
+        td.innerText = dateColumns.includes(j) ? formatDate(cellValue) : cellValue;
+
+        // --- Färga datumceller baserat på kvarvarande tid ---
+        if(dateColumns.includes(j) && cellValue){
+          const today = new Date();
+          const cellDate = new Date(cellValue);
+          const diffTime = cellDate - today;
+          const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+          if(diffDays <= 7) td.style.backgroundColor = "red";       // 1 vecka eller mindre
+          else if(diffDays <= 14) td.style.backgroundColor = "orange"; // 2 veckor eller mindre
+          else if(diffDays <= 30) td.style.backgroundColor = "yellow"; // 1 månad eller mindre
+        }
+      }
+
+      tr.appendChild(td);
+    });
+
+    if(editMode){
+      const td = document.createElement("td");
+
+      const saveBtn = document.createElement("button");
+      saveBtn.innerText="Spara";
+      saveBtn.onclick = async ()=>{
+        saveBtn.disabled = true;
+        await saveRow(i+2,tr);
+        document.getElementById("saveMessage").innerText = "Uppdatering är sparad!";
+        setTimeout(()=> location.reload(), 1500);
+      };
+
+      const delBtn = document.createElement("button");
+      delBtn.innerText="Radera";
+      delBtn.className="delete-btn";
+      delBtn.onclick = ()=>deleteRow(i+2);
+
+      td.appendChild(saveBtn);
+      td.appendChild(delBtn);
+      tr.appendChild(td);
+    }
+
+    table.appendChild(tr);
+  });
+}
+
+async function saveRow(rowNumber,tr){
+  const inputs = tr.querySelectorAll("input");
+  const promises = [];
+
+  inputs.forEach((input,i)=>{
+    let value = input.value;
+    if(!textColumns.includes(i) && value){
+      value = value; // datum sparas som YYYY-MM-DD
+    } else {
+      value = value.toString();
+    }
+    promises.push(updateCell(rowNumber,i+1,value));
+  });
+
+  await Promise.all(promises);
+}
+
+function toggleEdit(){
+  editMode = !editMode;
+  renderTable(data);
+}
+
+async function updateCell(row,col,value){
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"updateCell",
+      row:row,
+      col:col,
+      value:value
+    })
+  });
+}
+
+async function deleteRow(row){
+  if(!confirm("Radera rad?")) return;
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({action:"deleteRow", row:row})
+  });
+  // Visa meddelande och ladda om sidan
+  document.getElementById("saveMessage").innerText = "Raden har raderats!";
+  setTimeout(()=>{
+    location.reload();
+  }, 1500);
+}
+
+async function addCar(){
+  const name = newCarName.value.trim();
+  if(!name) return;
+
+  const newRowData = [name,"","","","",""];
+
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({action:"addRow", row:newRowData})
+  });
+
+  newCarName.value="";
+  document.getElementById("addMessage").innerText = `Bil "${name}" är tillagd!`;
+  setTimeout(()=>document.getElementById("addMessage").innerText="",3000);
+  loadData();
+}
+
+function searchCar(){
+  const value = search.value.toLowerCase();
+
+  const filtered = [
+    data[0],
+    ...data.slice(1).filter(r=>r[0]?.toLowerCase().includes(value))
+  ];
+
+  renderTable(filtered);
+}
+</script>
+
+</body>
+</html>
