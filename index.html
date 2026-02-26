@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bilregister</title>
+<title>🚗 Bilregister 🚗</title>
+<link rel="icon" type="image/png" href="taxi.png">
 <style>
 body { font-family: Arial; background: #f4f4f4; padding: 20px; }
 .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
@@ -14,14 +15,58 @@ button:hover { background: #0056b3; }
 .message { margin: 5px 0; color: green; }
 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
 th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-@media (max-width:768px) {
-  table, thead, tbody, th, td, tr { display: block; }
-  tr { margin-bottom: 15px; }
-  td { text-align: right; padding-left: 50%; position: relative; }
-  td::before { content: attr(data-label); position: absolute; left: 10px; width: 45%; text-align: left; font-weight: bold; }
+@media (max-width:430px) {
+  table, thead, tbody, th, td, tr {
+    display: table; /* behåll tabell-layout */
+  }
+  tr { margin-bottom: 0; }
+  td { text-align: center; padding-left: 8px; position: static; }
+  td::before { content: none; }
 }
+
+/* Gör tabellen horisontellt scroll-bar på små skärmar */
+.table-container {
+  overflow-x: auto; /* horisontell scroll */
+  -webkit-overflow-scrolling: touch; /* smidig scroll på iOS */
+}
+
+/* ===== GLOBAL NOTIFICATION ===== */
+.global-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #28a745;
+  color: white;
+  padding: 20px 40px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  z-index: 9999;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+  display: none;
+  text-align: center;
+  min-width: 250px;
+}
+
+.global-message.show {
+  display: block;
+  animation: fadeInOut 2.5s ease-in-out forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -60%); }
+  10% { opacity: 1; transform: translate(-50%, -50%); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -40%); }
+}
+
+
 </style>
 </head>
+
+<div id="globalMessage" class="global-message"></div>
+
 <body>
 
 <div class="container">
@@ -36,19 +81,21 @@ th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
 
 <!-- APP -->
 <div id="app" style="display:none;">
-  <h2>Bilregister</h2>
+  <h2>🚗 Bilregister 🚗</h2>
   
   <!-- Rad 1: Sök -->
   <div>
       <label>Sök bil:</label>
-      <input id="search" placeholder="Sök bil..." onkeyup="searchCar()">
+      <input id="search" placeholder="Skriv regnummer ..." onkeyup="searchCar()">
     </div>
     
+  <div class="table-container">
   <table id="table"></table>
+</div>
   
   <!-- Rad 2: Lägg till bil -->
   <div>
-      <input id="newCarName" placeholder="Ange bilnamn">
+      <input id="newCarName" placeholder="Ange regnummer">
       <button onclick="addCar()">Lägg till bil</button>
       <span id="addMessage" class="message"></span>
       
@@ -65,7 +112,7 @@ th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycby-lVviwPlE6e5pVVBN9JokL18610tPIrV3Uo3xC7zoTsdqX7KspzEL3Zcz8iFBajjbhw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyedhWpP3DCEFBc_Q0MT4Eaa8TzCHgLadywrKQa3R5riWwBpad13XGPTxPbaC7-akRT/exec";
 let data = [];
 let editMode = false;
 
@@ -209,8 +256,8 @@ function renderTable(rows){
       saveBtn.onclick = async ()=>{
         saveBtn.disabled = true;
         await saveRow(i+2,tr);
-        document.getElementById("saveMessage").innerText = "Uppdatering är sparad!";
-        setTimeout(()=> location.reload(), 1500);
+        showGlobalMessage("Uppdatering är sparad!");
+setTimeout(()=> location.reload(), 1500);
       };
 
       const delBtn = document.createElement("button");
@@ -268,7 +315,7 @@ async function deleteRow(row){
     body:JSON.stringify({action:"deleteRow", row:row})
   });
   // Visa meddelande och ladda om sidan
-  document.getElementById("saveMessage").innerText = "Raden har raderats!";
+  showGlobalMessage("Raden har raderats!");
   setTimeout(()=>{
     location.reload();
   }, 1500);
@@ -286,8 +333,8 @@ async function addCar(){
   });
 
   newCarName.value="";
-  document.getElementById("addMessage").innerText = `Bil "${name}" är tillagd!`;
-  setTimeout(()=>document.getElementById("addMessage").innerText="",3000);
+  showGlobalMessage(`Bil "${name}" är tillagd!`);
+  setTimeout(()=> location.reload(), 1500);
   loadData();
 }
 
@@ -301,6 +348,18 @@ function searchCar(){
 
   renderTable(filtered);
 }
+
+function showGlobalMessage(text){
+  const msg = document.getElementById("globalMessage");
+  msg.innerText = text;
+  msg.classList.add("show");
+
+  setTimeout(()=>{
+    msg.classList.remove("show");
+  }, 2500);
+}
+
+
 </script>
 
 </body>
