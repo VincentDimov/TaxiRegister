@@ -27,7 +27,16 @@ th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
 /* Gör tabellen horisontellt scroll-bar på små skärmar */
 .table-container {
   overflow-x: auto; /* horisontell scroll */
+  max-height: 500px; /* välj höjd */
   -webkit-overflow-scrolling: touch; /* smidig scroll på iOS */
+}
+
+
+th {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
 }
 
 /* ===== GLOBAL NOTIFICATION ===== */
