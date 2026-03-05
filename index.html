@@ -63,6 +63,8 @@ th {
   animation: fadeInOut 2.5s ease-in-out forwards;
 }
 
+
+
 @keyframes fadeInOut {
   0% { opacity: 0; transform: translate(-50%, -60%); }
   10% { opacity: 1; transform: translate(-50%, -50%); }
@@ -275,7 +277,7 @@ function renderTable(rows){
         saveBtn.disabled = true;
         await saveRow(i+2,tr);
         showGlobalMessage("Uppdatering är sparad!");
-setTimeout(()=> location.reload(), 1500);
+        setTimeout(()=> location.reload(), 500);
       };
 
       const delBtn = document.createElement("button");
@@ -298,6 +300,10 @@ async function saveRow(rowNumber,tr){
 
   inputs.forEach((input,i)=>{
     let value = input.value;
+    // Registreringsnummer (kolumn 0) till versaler
+    if(i === 0 && value){
+      value = value.toUpperCase();
+    }
     if(!textColumns.includes(i) && value){
       value = value; // datum sparas som YYYY-MM-DD
     } else {
@@ -358,11 +364,11 @@ async function deleteRow(row){
   showGlobalMessage("Raden har raderats!");
   setTimeout(()=>{
     location.reload();
-  }, 1500);
+  }, 500);
 }
 
 async function addCar(){
-  const name = newCarName.value.trim();
+  const name = newCarName.value.trim().toUpperCase();
   if(!name) return;
 
   const newRowData = [name,"","","","",""];
@@ -374,7 +380,7 @@ async function addCar(){
 
   newCarName.value="";
   showGlobalMessage(`Bil "${name}" är tillagd!`);
-  setTimeout(()=> location.reload(), 1500);
+  setTimeout(()=> location.reload(), 500);
   loadData();
 }
 
